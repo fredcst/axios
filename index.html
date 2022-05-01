@@ -10,7 +10,9 @@
 </head>
 
 <body>
-
+    <h1>Click to get new Jokes!</h1>
+    <button>click me!</button>
+    <ul id="jokes"></ul>
     <script>
         axios.get("https://swapi.dev/api/people/1").then((res) => {
             console.log("RESPONSE: ", res.data);
@@ -32,19 +34,29 @@
 
         getStartWarsPerson(1);
 
+        const jokes = document.querySelector('#jokes');
+        const button = document.querySelector('button');
+
+        const addNewJoke = async () => {
+            const joke = await getDadJoke();
+            const newLi = document.createElement('li');
+            newLi.append(joke);
+            jokes.append(newLi);
+        }
 
         const getDadJoke = async () => {
             try {
                 const config = { headers: { Accept: 'application/json' } }
                 const res = await axios.get("https://icanhazdadjoke.com", config)
-                console.log(res.data.joke);
+                return res.data.joke;
             }
             catch (e) {
-                console.log("ERROR: ", e)
+                return "No jokes available, SORRY"
             }
         }
 
-        getDadJoke();
+
+        button.addEventListener('click', addNewJoke);
 
 
 
