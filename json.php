@@ -50,24 +50,23 @@ class ProxyController
                 $buffer = ''; // Acumula datos hasta encontrar un JSON completo
 
                 while (!$body->eof()) {
-                    $buffer .= $body->read(1); // Leer byte a byte
-                    if ($this->isCompleteJson($buffer)) {
-                        // Enviar al cliente el JSON completo
-                        echo $buffer;
+                    $buffer .= $body->read(512); // Leer bloques pequeños de 512 bytes
+
+                    // Buscar objetos JSON completos dentro del buffer
+                    while (($json = $this->extractJsonFromBuffer($buffer)) !== null) {
+                        // Enviar el JSON al cliente
+                        echo $json;
                         ob_flush();
                         flush();
 
                         // Parsear el JSON recibido
-                        $decoded = json_decode($buffer, true);
+                        $decoded = json_decode($json, true);
                         if (isset($decoded['token'])) {
                             $tokens[] = $decoded['token'];
                         }
                         if (isset($decoded['title'])) {
                             $title = $decoded['title'];
                         }
-
-                        // Limpiar el buffer una vez procesado
-                        $buffer = '';
                     }
                 }
 
@@ -88,16 +87,26 @@ class ProxyController
     }
 
     /**
-     * Verifica si el contenido del buffer es un JSON completo.
+     * Extrae el primer objeto JSON válido del buffer si existe.
+     * Elimina el JSON encontrado del buffer.
      */
-    private function isCompleteJson(string $buffer): bool
+    private function extractJsonFromBuffer(string &$buffer): ?string
     {
-        $trimmed = trim($buffer);
-        if (substr($trimmed, 0, 1) === '{' && substr($trimmed, -1) === '}') {
-            json_decode($trimmed);
-            return json_last_error() === JSON_ERROR_NONE;
+        $start = strpos($buffer, '{');
+        $end = strpos($buffer, '}');
+
+        if ($start !== false && $end !== false && $start < $end) {
+            $json = substr($buffer, $start, $end - $start + 1);
+
+            // Validar si es un JSON completo
+            json_decode($json);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                // Eliminar el JSON procesado del buffer
+                $buffer = substr($buffer, $end + 1);
+                return $json;
+            }
         }
 
-        return false;
+        return null;
     }
 }
