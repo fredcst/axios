@@ -1,88 +1,161 @@
-import React, { useRef, useState } from 'react';
+<?php
 
-const App = () => {
-  const [text, setText] = useState('');
-  const [responseChunks, setResponseChunks] = useState<string[]>([]); // Array para almacenar los chunks completos
-  const fileInput = useRef<HTMLInputElement>(null);
+namespace App\Controller;
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use GuzzleHttp\Client;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
-    const formData = new FormData();
-    formData.append('text', text);
-    if (fileInput.current?.files?.[0]) {
-      formData.append('file', fileInput.current.files[0]);
-    }
-
-    try {
-      // Usamos fetch en lugar de axios para manejar el streaming de manera efectiva
-      const response = await fetch('/api/proxy', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Error en la respuesta del servidor');
-      }
-
-      // Usamos .body.getReader() para leer el stream
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let buffer = ''; // Buffer para acumular los chunks
-
-      // Leemos el stream de manera incremental
-      while (true) {
-        const { done, value } = await reader!.read();
-        if (done) break;
-
-        // Decodificamos el chunk y lo agregamos al buffer
-        const chunkText = decoder.decode(value, { stream: true });
-        buffer += chunkText;
-
-        // Mientras el buffer tenga un objeto JSON completo, procesamos
-        let endOfJson;
-        while ((endOfJson = buffer.indexOf('}')) !== -1) {
-          const jsonPart = buffer.slice(0, endOfJson + 1);
-          buffer = buffer.slice(endOfJson + 1); // Elimina la parte procesada
-
-          try {
-            const jsonData = JSON.parse(jsonPart); // Intentamos parsear el JSON
-            setResponseChunks((prevChunks) => [
-              ...prevChunks,
-              JSON.stringify(jsonData), // Agregamos el JSON completo al estado
-            ]);
-          } catch (error) {
-            console.error('Error al parsear JSON', error);
-          }
+class ProxyController
+{
+    #[Route('/proxy', name: 'proxy', methods: ['POST'])]
+    public function proxy(Request $request): Response
+    {
+        // Verificar si los parámetros necesarios están presentes
+        $conversationId = $request->request->get('conversation_id');
+        $input = $request->request->get('input');
+        if (!$conversationId || !$input) {
+            throw new BadRequestHttpException('Faltan parámetros necesarios.');
         }
-      }
-    } catch (error) {
-      console.error('Error al enviar la solicitud:', error);
+
+        // Cliente de Guzzle
+        $client = new Client();
+
+        // Crear una respuesta en stream para el frontend
+        $streamedResponse = new StreamedResponse(function () use ($client, $conversationId, $input) {
+            // Inicializar variables
+            $tokens = [];
+            $title = null;
+
+            try {
+                // Enviar solicitud POST al servidor externo
+                $response = $client->post('https://external-server.com/api', [
+                    'multipart' => [
+                        [
+                            'name' => 'conversation_id',
+                            'contents' => $conversationId,
+                        ],
+                        [
+                            'name' => 'input',
+                            'contents' => $input,
+                        ],
+                    ],
+                    'stream' => true, // Recibir respuesta en stream
+                ]);
+
+                // Procesar la respuesta en stream
+                $body = $response->getBody();
+                while (!$body->eof()) {
+                    $line = $body->read(1024); // Leer en bloques
+                    if (!empty(trim($line))) {
+                        // Enviar al cliente en tiempo real
+                        echo $line;
+                        ob_flush();
+                        flush();
+
+                        // Parsear el JSON recibido
+                        $decoded = json_decode($line, true);
+                        if (isset($decoded['token'])) {
+                            $tokens[] = $decoded['token'];
+                        }
+                        if (isset($decoded['title'])) {
+                            $title = $decoded['title'];
+                        }
+                    }
+                }
+
+                // Guardar tokens y título en una variable (puedes reemplazar esto con otra lógica)
+                $finalString = implode(' ', $tokens);
+                // Aquí podrías persistir o trabajar con $finalString y $title.
+            } catch (\Exception $e) {
+                // Manejar errores en la conexión al servidor externo
+                echo json_encode(['error' => $e->getMessage()]);
+                ob_flush();
+                flush();
+            }
+        });
+
+        // Configurar los headers
+        $streamedResponse->headers->set('Content-Type', 'application/json');
+        return $streamedResponse;
     }
-  };
+}
 
-  return (
-    <div>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Ingresa texto"
-        />
-        <input type="file" ref={fileInput} />
-        <button type="submit">Enviar</button>
-      </form>
 
-      {/* Mostrar cada JSON recibido en pantalla */}
-      <div>
-        <h3>Respuesta del servidor (uno por uno):</h3>
-        <pre>{responseChunks.map((chunk, index) => (
-          <div key={index}>{chunk}</div> // Mostramos cada chunk de JSON por separado
-        ))}</pre>
-      </div>
-    </div>
-  );
+
+import React, { useState } from 'react';
+
+const StreamedRequest = () => {
+    const [conversationId, setConversationId] = useState('');
+    const [input, setInput] = useState('');
+    const [response, setResponse] = useState<string>('');
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Crear el formulario multipart
+        const formData = new FormData();
+        formData.append('conversation_id', conversationId);
+        formData.append('input', input);
+
+        try {
+            const res = await fetch('http://localhost/proxy', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!res.body) {
+                throw new Error('No se recibió respuesta del servidor.');
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let receivedData = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                receivedData += chunk;
+
+                // Mostrar los datos en tiempo real
+                setResponse((prev) => prev + chunk);
+            }
+
+            console.log('Respuesta completa:', receivedData);
+        } catch (err) {
+            console.error('Error:', err);
+            setResponse('Ocurrió un error.');
+        }
+    };
+
+    return (
+        <div>
+            <form onSubmit={handleSubmit}>
+                <input
+                    type="text"
+                    placeholder="Conversation ID"
+                    value={conversationId}
+                    onChange={(e) => setConversationId(e.target.value)}
+                />
+                <input
+                    type="text"
+                    placeholder="Input"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                />
+                <button type="submit">Enviar</button>
+            </form>
+            <div>
+                <h3>Respuesta:</h3>
+                <pre>{response}</pre>
+            </div>
+        </div>
+    );
 };
 
-export default App;
+export default StreamedRequest;
