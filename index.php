@@ -4,19 +4,20 @@ namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use GuzzleHttp\Client;
 
 class ConversationController extends AbstractController
 {
-    public function handleConversation(Request $request): Response
+    public function handleConversation(Request $request): StreamedResponse
     {
         $conversationId = $request->request->get('conversation_id');
         $input = $request->request->get('input');
 
         if (!$conversationId || !$input) {
-            return $this->json(['error' => 'Missing parameters'], Response::HTTP_BAD_REQUEST);
+            return new StreamedResponse(function () {
+                echo json_encode(['error' => 'Missing parameters']);
+            }, 400, ['Content-Type' => 'application/json']);
         }
 
         // Cliente Guzzle para realizar la solicitud al servidor externo
@@ -26,18 +27,18 @@ class ConversationController extends AbstractController
         $suggestions = [];
         $tokenConcatenation = '';
 
-        try {
-            $externalResponse = $client->post('https://external-server.com/api', [
-                'json' => [
-                    'conversation_id' => $conversationId,
-                    'question' => $input,
+        // Crear la respuesta *streamed*
+        $response = new StreamedResponse(function () use ($client, $conversationId, $input, &$buffer, &$title, &$suggestions, &$tokenConcatenation) {
+            try {
+                $externalResponse = $client->post('https://external-server.com/api', [
+                    'json' => [
+                        'conversation_id' => $conversationId,
+                        'question' => $input,
+                        'stream' => true,
+                    ],
                     'stream' => true,
-                ],
-                'stream' => true,
-            ]);
+                ]);
 
-            // Crear una StreamedResponse para gestionar el streaming
-            $response = new StreamedResponse(function () use ($externalResponse, &$buffer, &$title, &$suggestions, &$tokenConcatenation, $conversationId) {
                 $stream = $externalResponse->getBody();
 
                 while (!$stream->eof()) {
@@ -77,13 +78,22 @@ class ConversationController extends AbstractController
                     'tokenConcatenation' => $tokenConcatenation,
                     'title' => $title,
                     'suggestions' => $suggestions,
-                ]);
-            });
+                ]) . PHP_EOL;
 
-            $response->headers->set('Content-Type', 'application/json');
-            return $response;
-        } catch (\Exception $e) {
-            return $this->json(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+                ob_flush();
+                flush();
+            } catch (\Exception $e) {
+                echo json_encode(['error' => $e->getMessage()]) . PHP_EOL;
+                ob_flush();
+                flush();
+            }
+        });
+
+        // Configurar encabezados para una correcta respuesta de streaming
+        $response->headers->set('Content-Type', 'application/json');
+        $response->headers->set('Cache-Control', 'no-cache');
+        $response->headers->set('Connection', 'keep-alive');
+
+        return $response;
     }
 }
