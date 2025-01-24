@@ -5,6 +5,7 @@ namespace App\Controller;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use GuzzleHttp\Client;
 
 class ConversationController extends AbstractController
@@ -20,7 +21,7 @@ class ConversationController extends AbstractController
 
         // Cliente Guzzle para realizar la solicitud al servidor externo
         $client = new Client();
-        $buffer = ''; // Almacenará el contenido del buffer del servidor externo
+        $buffer = ''; // Almacena el contenido del buffer del servidor externo
         $title = null;
         $suggestions = [];
         $tokenConcatenation = '';
@@ -35,8 +36,8 @@ class ConversationController extends AbstractController
                 'stream' => true,
             ]);
 
-            // Streamed Response para enviar tokens uno a uno al frontend
-            return new Response(function () use ($externalResponse, &$buffer, &$title, &$suggestions, &$tokenConcatenation) {
+            // Crear una StreamedResponse para gestionar el streaming
+            $response = new StreamedResponse(function () use ($externalResponse, &$buffer, &$title, &$suggestions, &$tokenConcatenation, $conversationId) {
                 $stream = $externalResponse->getBody();
 
                 while (!$stream->eof()) {
@@ -55,7 +56,7 @@ class ConversationController extends AbstractController
                             $tokenConcatenation .= $token;
 
                             // Enviar el token inmediatamente al frontend
-                            echo json_encode(['token' => $token]);
+                            echo json_encode(['token' => $token]) . PHP_EOL;
                             ob_flush();
                             flush();
                         }
@@ -77,9 +78,10 @@ class ConversationController extends AbstractController
                     'title' => $title,
                     'suggestions' => $suggestions,
                 ]);
-            }, Response::HTTP_OK, [
-                'Content-Type' => 'application/json',
-            ]);
+            });
+
+            $response->headers->set('Content-Type', 'application/json');
+            return $response;
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
