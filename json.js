@@ -32,3 +32,51 @@ const handleSend = async () => {
     sendMessageStream(selectedConversation.id);
   }
 };
+
+const messageData = responseSaveToDb.data;
+
+if (messageData.id) {
+  const newMessage = {
+    input,
+    output: concatenatedTokens,
+    id: messageData.id,
+    attachment: messageData.attachment,
+    source: messageData.source,
+  };
+
+  const messageIndex = messages.findIndex((message) => message.id === -1); // Mensaje temporal
+
+  if (messageIndex !== -1) {
+    const updatedMessages = [...messages];
+    updatedMessages[messageIndex] = newMessage;
+    setMessages(updatedMessages);
+  } else {
+    setMessages([...messages, newMessage]);
+  }
+
+  // Actualización de la lista de conversaciones
+  const updatedConversations = conversations.map((conv) => {
+    // Si coincide el ID, actualizamos el nombre
+    if (conv.id === messageData.conversationId) {
+      return { ...conv, name: messageData.name };
+    }
+    return conv;
+  });
+
+  // Verifica si falta la conversación recién creada
+  if (!updatedConversations.some((conv) => conv.id === messageData.conversationId)) {
+    updatedConversations.push({
+      id: messageData.conversationId,
+      name: messageData.name,
+    });
+  }
+
+  setConversations(updatedConversations);
+  setSuggestions(messageData.suggestions);
+  setResponseChunks([]);
+  setError(null);
+} else {
+  setError('Error sending message: no ID');
+}
+
+
