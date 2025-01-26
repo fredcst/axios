@@ -1,26 +1,34 @@
-const createConversation = async () => {
+interface Conversation {
+  id: string;
+  title?: string;
+}
+
+const [conversations, setConversations] = useState<Conversation[]>([]);
+const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+const [error, setError] = useState<string | null>(null);
+
+const createConversation = async (): Promise<Conversation | null> => {
   try {
     const response = await axios.post<Conversation>('/api/conversation', {});
-    if (response.data.id) {
-      const newConversation = response.data; // Captura directamente la conversación creada
-      setConversations((prev) => [...prev, newConversation]);
+    const newConversation = response.data;
+
+    if (newConversation.id) {
+      setConversations((prev: Conversation[]) => [...prev, newConversation]); // Aquí se evita el error
+      setSelectedConversation(newConversation);
       setError(null);
-      setSelectedConversation(newConversation); // Actualiza el estado
-      return newConversation; // Devuelve la conversación creada
+      return newConversation;
     } else {
       setError('Error creating conversation');
       return null;
     }
-  } catch (error) {
+  } catch (err) {
     setError('Error creating conversation');
     return null;
   }
 };
 
 const handleSend = async () => {
-  if (!input) {
-    return;
-  }
+  if (!input) return;
 
   setMessages((prev) => [
     ...prev,
@@ -37,52 +45,9 @@ const handleSend = async () => {
   if (!selectedConversation) {
     const newConversation = await createConversation();
     if (newConversation?.id) {
-      sendMessageStream(newConversation.id); // Usa directamente el ID retornado
+      sendMessageStream(newConversation.id);
     }
   } else {
     sendMessageStream(selectedConversation.id);
-  }
-};
-
-
-const [conversations, setConversations] = useState<Conversation[]>([]);
-
-const createConversation = async () => {
-  try {
-    const response = await axios.post<Conversation>('/api/conversation', {});
-    if (response.data.id) {
-      const newConversation: Conversation = response.data;
-      setConversations((prev) => [...prev, newConversation]); // Correcto tipo
-      setError(null);
-      setSelectedConversation(newConversation);
-      return newConversation;
-    } else {
-      setError('Error creating conversation');
-      return null;
-    }
-  } catch (error) {
-    setError('Error creating conversation');
-    return null;
-  }
-};
-
-const [conversations, setConversations] = useState<Conversation[]>([]);
-
-const createConversation = async () => {
-  try {
-    const response = await axios.post<Conversation>('/api/conversation', {});
-    if (response.data.id) {
-      const newConversation: Conversation = response.data;
-      setConversations((prev) => [...prev, newConversation]); // Correcto tipo
-      setError(null);
-      setSelectedConversation(newConversation);
-      return newConversation;
-    } else {
-      setError('Error creating conversation');
-      return null;
-    }
-  } catch (error) {
-    setError('Error creating conversation');
-    return null;
   }
 };
