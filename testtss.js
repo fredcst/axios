@@ -51,3 +51,36 @@ const handleSend = async () => {
     sendMessageStream(selectedConversation.id);
   }
 };
+
+interface Conversation {
+  id: string;
+  title?: string;
+}
+
+const [conversations, setConversations] = useState<Conversation[]>([]);
+
+const createConversation = async (): Promise<Conversation | null> => {
+  try {
+    const response = await axios.post('/api/conversation', {});
+    const newConversation: Conversation = {
+      id: response.data.id,
+      title: response.data.title, // Ajusta según las propiedades que tengas
+    };
+
+    if (newConversation.id) {
+      setConversations((prev) => {
+        const updatedConversations: Conversation[] = [...prev, newConversation];
+        return updatedConversations;
+      });
+
+      return newConversation;
+    } else {
+      setError('Error creating conversation');
+      return null;
+    }
+  } catch (error) {
+    setError('Error creating conversation');
+    return null;
+  }
+};
+
