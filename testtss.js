@@ -65,3 +65,24 @@ const createConversation = async () => {
     return null;
   }
 };
+
+const [conversations, setConversations] = useState<Conversation[]>([]);
+
+const createConversation = async () => {
+  try {
+    const response = await axios.post<Conversation>('/api/conversation', {});
+    if (response.data.id) {
+      const newConversation: Conversation = response.data;
+      setConversations((prev) => [...prev, newConversation]); // Correcto tipo
+      setError(null);
+      setSelectedConversation(newConversation);
+      return newConversation;
+    } else {
+      setError('Error creating conversation');
+      return null;
+    }
+  } catch (error) {
+    setError('Error creating conversation');
+    return null;
+  }
+};
