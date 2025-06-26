@@ -1,3 +1,53 @@
+
+// src/Controller/MonitoringController.php
+namespace App\Controller;
+
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+
+class MonitoringController extends AbstractController
+{
+    #[Route('/memory', name: 'app_memory_usage')]
+    public function memoryUsage(): JsonResponse
+    {
+        return $this->json([
+            'currentMB' => round(memory_get_usage(true) / 1024 / 1024, 2),
+            'peakMB'    => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
+        ]);
+    }
+}
+
+
+import React, { useEffect, useState } from 'react';
+
+const MemoryUsage = () => {
+  const [memory, setMemory] = useState({ currentMB: 0, peakMB: 0 });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch('/memory') // Asegúrate que tu frontend puede acceder a esta ruta (CORS o proxy)
+        .then(res => res.json())
+        .then(data => setMemory(data))
+        .catch(err => console.error('Error fetching memory usage', err));
+    }, 1000); // Cada segundo
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{ padding: '1rem', fontFamily: 'monospace' }}>
+      <h2>Uso de Memoria (Symfony)</h2>
+      <p>🧠 Actual: {memory.currentMB} MB</p>
+      <p>📈 Pico: {memory.peakMB} MB</p>
+    </div>
+  );
+};
+
+export default MemoryUsage;
+
+
+
 import React, { useState } from 'react';
 
 function ChatComponent() {
