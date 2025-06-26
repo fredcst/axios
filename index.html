@@ -1,4 +1,83 @@
+namespace App\Controller;
 
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\Routing\Annotation\Route;
+
+class MemoryStreamController
+{
+    #[Route('/api/memory-stream', name: 'api_memory_stream')]
+    public function streamMemory(): StreamedResponse
+    {
+        $response = new StreamedResponse(function () {
+            // SSE requiere este header al principio
+            echo ": connected\n\n";
+            ob_flush();
+            flush();
+
+            for ($i = 0; $i < 60; $i++) {
+                // Simulamos algo de carga (puedes reemplazar esto con lógica real)
+                $temp = str_repeat('x', rand(1000, 10000));
+
+                gc_collect_cycles(); // limpia ciclos
+
+                $current = memory_get_usage(true);
+                $peak = memory_get_peak_usage(true);
+
+                echo "data: " . json_encode([
+                    'current' => $current,
+                    'peak' => $peak,
+                    'timestamp' => time()
+                ]) . "\n\n";
+
+                ob_flush();
+                flush();
+                sleep(1);
+            }
+        });
+
+        $response->headers->set('Content-Type', 'text/event-stream');
+        $response->headers->set('Cache-Control', 'no-cache');
+        $response->headers->set('Connection', 'keep-alive');
+
+        return $response;
+    }
+}
+
+import React, { useEffect, useState } from 'react';
+
+const MemoryUsageStream = () => {
+  const [memory, setMemory] = useState({ current: 0, peak: 0 });
+
+  useEffect(() => {
+    const source = new EventSource('http://localhost:8000/api/memory-stream');
+
+    source.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setMemory({ current: data.current, peak: data.peak });
+    };
+
+    source.onerror = (err) => {
+      console.error('EventSource failed:', err);
+      source.close();
+    };
+
+    return () => {
+      source.close();
+    };
+  }, []);
+
+  const formatBytes = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+
+  return (
+    <div style={{ fontFamily: 'monospace', textAlign: 'center', padding: '1rem' }}>
+      <h3>🔁 Memory Stream</h3>
+      <p>Current: {formatBytes(memory.current)}</p>
+      <p>Peak: {formatBytes(memory.peak)}</p>
+    </div>
+  );
+};
+
+export default MemoryUsageStream;
 
 <?php
 
