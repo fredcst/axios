@@ -1,4 +1,26 @@
 
+
+<?php
+
+namespace App\Controller;
+
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Routing\Annotation\Route;
+
+class MonitoringController
+{
+    #[Route('/api/memory-usage', name: 'api_memory_usage', methods: ['GET'])]
+    public function memoryUsage(): JsonResponse
+    {
+        gc_collect_cycles(); // opcional: fuerza limpieza para valores más precisos
+
+        return new JsonResponse([
+            'current' => memory_get_usage(true),
+            'peak' => memory_get_peak_usage(true),
+        ]);
+    }
+}
+
 import React, { useEffect, useState } from 'react';
 
 const MemoryUsageMonitor = () => {
