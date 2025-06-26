@@ -1,5 +1,88 @@
 <?php
 
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Doctrine\ORM\EntityManagerInterface;
+use App\Entity\Message;
+use App\Repository\ConversationRepository;
+use App\Service\LLMService;
+
+class ChatController extends AbstractController
+{
+    #[Route('/api/send-and-stream', name: 'api_send_and_stream', methods: ['POST'])]
+    public function sendAndStream(
+        Request $request,
+        EntityManagerInterface $em,
+        ConversationRepository $conversationRepo,
+        LLMService $llmService
+    ): StreamedResponse {
+        $input = $request->get('input');
+        $conversationId = $request->get('conversation_id');
+        $attachment = $request->files->get('attachment');
+
+        $conversation = $conversationRepo->find($conversationId);
+        if (!$conversation) {
+            return $this->json(['error' => 'Conversation not found'], 404);
+        }
+
+        $message = new Message();
+        $message->setConversation($conversation);
+        $message->setInput($input);
+        $message->setCreatedAt(new \DateTimeImmutable());
+
+        if ($attachment) {
+            $message->setAttachmentName($attachment->getClientOriginalName());
+            // Aquí podrías procesar o guardar el archivo
+        }
+
+        $em->persist($message);
+        $em->flush();
+
+        $prompt = $conversation->getContext() . "\nUser: " . $input;
+        $stream = $llmService->streamCompletion($prompt); // retorna iterable
+
+        return new StreamedResponse(function () use ($stream, $message, $em) {
+            $output = '';
+            $chunkCount = 0;
+
+            echo "data: ";
+            @ob_flush(); flush();
+
+            foreach ($stream as $chunk) {
+                echo $chunk;
+                $output .= $chunk;
+                $chunkCount++;
+
+                if ($chunkCount % 10 === 0) {
+                    @ob_flush(); flush();
+                    $em->clear(); // libera memoria Doctrine
+                }
+            }
+
+            echo "\n\n";
+            @ob_flush(); flush();
+
+            $message->setResponse($output);
+            $message->setTokens(strlen($output)); // o métrica real de tokens
+            $em->merge($message);
+            $em->flush();
+            $em->clear();
+        }, 200, [
+            'Content-Type'  => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+}
+
+
+
+
+
+
+
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
