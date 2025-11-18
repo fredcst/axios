@@ -1,3 +1,36 @@
+On this slide, I’d like to give you an overview of who we are and how our hosting landscape is evolving.
+Our team develops and maintains a wide set of websites and applications for COMGPE and the Enterprise Engagement Directorate. These assets serve both internal staff and the general public.
+
+Up until now, our PHP, WordPress and Symfony applications have been hosted on the OSWP shared platform within the dMZR IT Cloud.
+While OSWP has supported us for several years, it remains a shared platform, which limits our ability to scale and to guarantee high levels of resilience and availability.
+
+This is why the transition to the new eWebHosting offer is a major step forward for us.
+Since October 27, our first workloads have been deployed on this new platform, which finally provides the scalability, resilience, and availability we need for our most visible applications.
+
+This move also aligns with our strategy to recover and properly manage Shadow IT, while preparing our roadmap for 2025 to 2027.”
+
+⸻
+
+✅ Updated Speech – Slide: Onboarding & Support
+
+(Esta parte casi no necesita cambios, pero la ajusto para coherencia)
+
+“Regarding onboarding, we started the transition on October 27 with strong support from the OCP and UPSUN teams.
+Thanks to dedicated workshops, documentation, and regular follow-ups, we were able to quickly master the new ecosystem and accelerate the deployment of our assets on eWebHosting.
+
+The support has been continuous — through email, phone and hands-on sessions — ensuring a smooth transition from OSWP to a more modern and resilient environment.
+
+In summary:
+– We now have a hosting platform that meets our needs for scalability, performance, and resilience.
+– Onboarding was efficient and personalized.
+– And we benefited from responsive support to secure service continuity during the transition.”
+
+
+
+
+
+
+
 So on this slide, I’d like to give you an overview of who we are and what we do within the DEECOM domain.
 Our team develops and maintains a wide set of websites and applications for two main clients: COMGPE and the Enterprise Engagement Directorate, the DEE. These applications are used both internally by staff and externally by the general public.
 
