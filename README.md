@@ -1,3 +1,33 @@
+So on this slide, I’d like to give you an overview of who we are and what we do within the DEECOM domain.
+Our team develops and maintains a wide set of websites and applications for two main clients: COMGPE and the Enterprise Engagement Directorate, the DEE. These applications are used both internally by staff and externally by the general public.
+
+Our technical stack is mainly based on PHP, using WordPress as our CMS and Symfony for our custom applications.
+All these applications are hosted on the shared Open Source Web Platform within the dMZR IT Cloud, in IaaS mode. This infrastructure gives us improved scalability, resilience, and availability.
+
+This year, our domain also played an important role in the migration of Echonet to the new dMZR Third Party platform, which is part of a broader strategy to recover and modernize highly visible Shadow IT.
+Overall, our hosting platform now fully supports our needs in terms of performance, security, and long-term stability.”
+
+⸻
+
+✅ Speech for Slide: Onboarding & Support
+
+“On this slide, I want to highlight how the onboarding phase has been carried out.
+We officially started on October 27, with strong support from both the OCP and UPSUN teams.
+
+We benefited from dedicated workshops, documentation, and regular meetings, which helped us very quickly understand and adopt this new ecosystem.
+The support has been continuous — through email, phone, and hands-on sessions — allowing us to accelerate the installation and deployment of our assets.
+
+In summary, the key points to remember are:
+– First, a full modernization of our hosting to strengthen security and performance.
+– Second, personalized onboarding support, which made the transition fast and smooth.
+– And finally, responsive support ensuring continuity of service as we expand our deployments.”
+
+
+
+
+
+
+
 const createConversation = async () => {
   try {
     const response = await axios.post<Conversation>('/api/conversation', {});
