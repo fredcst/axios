@@ -1,3 +1,56 @@
+return useMutation({
+  mutationFn: async ({ conversationId, message }) => {
+    const res = await axios.get('/api/create-empty-message', {
+      params: { conversationId, message }
+    });
+
+    const messageId = res.data.messageId;
+
+    return {
+      conversationId,
+      message: { ...message, id: messageId }
+    };
+  },
+
+  onMutate: async ({ conversationId, message }) => {
+    await queryClient.cancelQueries({
+      queryKey: ['conversation', conversationId, 'messages']
+    });
+
+    const previousMessages =
+      queryClient.getQueryData(['conversation', conversationId, 'messages']) || [];
+
+    const newMessage = {
+      ...message,
+      id: 'temp-' + Date.now(), // ID temporal
+    };
+
+    queryClient.setQueryData(
+      ['conversation', conversationId, 'messages'],
+      (old = []) => [...old, newMessage]
+    );
+
+    return { previousMessages };
+  },
+
+  onError: (_error, { conversationId }, context) => {
+    if (context?.previousMessages) {
+      queryClient.setQueryData(
+        ['conversation', conversationId, 'messages'],
+        context.previousMessages
+      );
+    }
+  },
+
+  onSuccess: ({ conversationId, message }) => {
+    // Reemplazar el mensaje temporal por el real
+    queryClient.invalidateQueries(['conversation', conversationId, 'messages']);
+  },
+});
+
+
+
+
 On this slide, I’d like to give you an overview of who we are and how our hosting landscape is evolving.
 Our team develops and maintains a wide set of websites and applications for COMGPE and the Enterprise Engagement Directorate. These assets serve both internal staff and the general public.
 
