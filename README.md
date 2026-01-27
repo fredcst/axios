@@ -1,3 +1,68 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:1.18-alpine
+    container_name: legacy_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./www:/var/www/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+    networks:
+      - legacy_net
+
+  php:
+    image: php:5.6-fpm
+    container_name: legacy_php
+    volumes:
+      - ./www:/var/www/html
+    networks:
+      - legacy_net
+
+  mysql:
+    image: mysql:5.6
+    container_name: legacy_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: legacy_db
+      MYSQL_USER: legacy_user
+      MYSQL_PASSWORD: legacy_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - legacy_net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.2
+    container_name: legacy_phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root
+    depends_on:
+      - mysql
+    networks:
+      - legacy_net
+
+volumes:
+  mysql_data:
+
+networks:
+  legacy_net:
+
+
+
+
+
+
 return useMutation({
   mutationFn: async ({ conversationId, message }) => {
     const res = await axios.get('/api/create-empty-message', {
