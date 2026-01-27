@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  php:
+    build: .
+    platform: linux/amd64
+    container_name: symfony3_php56_oracle
+    volumes:
+      - ./www:/var/www/html
+    environment:
+      - LD_LIBRARY_PATH=/opt/oracle/instantclient
+    networks:
+      - legacy_net
+
+networks:
+  legacy_net:
